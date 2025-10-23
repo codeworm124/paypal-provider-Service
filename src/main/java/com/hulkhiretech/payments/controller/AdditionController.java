@@ -20,4 +20,13 @@ public class AdditionController {
 
         return sumResult;
     }
+    @PostMapping("/sub")
+    public int sub(@RequestParam int num1, @RequestParam int num2) {
+        logger.info("num1:{}|num2:{}", num1, num2);
+        
+        int sumResult = num1 - num2;
+        logger.info("sumResult:{}", sumResult);
+
+        return sumResult;
+    }
 }
