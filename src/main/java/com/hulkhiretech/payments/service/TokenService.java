@@ -17,6 +17,7 @@ import com.hulkhiretech.payments.constatnt.Constant;
 import com.hulkhiretech.payments.http.HttpRequest;
 import com.hulkhiretech.payments.http.HttpServiceEngine;
 import com.hulkhiretech.payments.paypal.res.PayPalOAuthToken;
+import com.hulkhiretech.payments.util.JsonUtil;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +42,7 @@ public class TokenService {
 	private String outhUrl;
 	
 	private final HttpServiceEngine httpServiceEngine;
-
+    private final JsonUtil jsonUtil;
 	private final ObjectMapper objectMapper;
 	
 	public String getAccessToken() {
@@ -75,21 +76,12 @@ public class TokenService {
 		String tokenBody=response.getBody();
 		log.info("HTTP response from HttpServiceEngine:{}",tokenBody);
 		
-		try {
-			PayPalOAuthToken token=objectMapper.readValue(tokenBody, 
-					                PayPalOAuthToken.class);
-			log.info("Parsed OAuth token:{}",token);
-			
-			accessToken=token.getAccessToken();
-			log.info("Caching access token for future use");
-			
-			return accessToken;
-		} catch (JsonProcessingException e) {
-			
-			log.error("Error parsing OAuth token response:{}",e.getMessage(),e);
-			throw new RuntimeException("Failed to parse OAuth token response",e);
-			
-		}
+		
+		PayPalOAuthToken token=jsonUtil.fromJson(tokenBody, PayPalOAuthToken.class);
+		accessToken=token.getAccessToken();
+		log.info("Caching access token for future use");
+		
+		return accessToken;
 		
 	}
 }

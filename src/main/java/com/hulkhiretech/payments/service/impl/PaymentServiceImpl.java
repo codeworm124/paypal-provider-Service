@@ -25,6 +25,7 @@ import com.hulkhiretech.payments.pojo.CreateOrderReq;
 import com.hulkhiretech.payments.pojo.OrderResponse;
 import com.hulkhiretech.payments.service.TokenService;
 import com.hulkhiretech.payments.service.interfaces.PaymentService;
+import com.hulkhiretech.payments.util.JsonUtil;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class PaymentServiceImpl implements PaymentService {
 	@Value("${paypal.create.order.url}")
 	private String createOrderUrl;
 	
+	private final JsonUtil jsonUtil;
 	private final ObjectMapper objectMapper;
 	private final TokenService tokenService;
 	private final HttpServiceEngine httpServiceEngine;
@@ -100,18 +102,9 @@ public class PaymentServiceImpl implements PaymentService {
         log.info("Constructed OrderRequest object:{}",request);
 	    
         //convert to json string.
-        String requestAsJson=null;
-	    try {
-	    	requestAsJson=objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(request);
-			log.info("OrderRequest JSON:{}",requestAsJson);
-			
-		} catch (Exception e) {
-		
-			log.error("Error creating OrderRequest JSON:{}",e.getMessage(),e);
-			throw new RuntimeException("Error creating OrderRequest JSON:{}",e);
-			
-		}
-	    
+        String requestAsJson =jsonUtil.toJson(request);
+        
+        	    
 	    
 	   
 
@@ -128,13 +121,8 @@ public class PaymentServiceImpl implements PaymentService {
 		//pass httpRequest into httpEngine
         ResponseEntity<String> successResponse=httpServiceEngine.makeHttpCall(httpRequest  );	    
          
-        PayPalOrder payPalOrder=null;
-        try {
-		      payPalOrder=objectMapper.readValue(successResponse.getBody(), PayPalOrder.class);
-		} catch (Exception e) {
-			log.info("error parsing PaypalOrder response",e);
-			throw new RuntimeException("Error parsing PaypalOrder response",e);
-		} 
+        PayPalOrder payPalOrder=jsonUtil.fromJson(successResponse.getBody(),PayPalOrder.class);
+        
         
         OrderResponse orderResponse=toOrderResponse(payPalOrder);
         log.info("Converted OrderResponse:{}",orderResponse);
