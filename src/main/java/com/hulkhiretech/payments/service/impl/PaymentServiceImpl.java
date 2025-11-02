@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hulkhiretech.payments.constatnt.Constant;
 import com.hulkhiretech.payments.http.HttpRequest;
 import com.hulkhiretech.payments.http.HttpServiceEngine;
 import com.hulkhiretech.payments.paypal.req.Amount;
@@ -36,13 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
-	private static final String INTENT_CAPTURE = "CAPTURE";
-	private static final String USER_ACTION_PAY_NOW = "PAY_NOW";
-	private static final String SHIPPING_PREF_NO_SHIPPING = "NO_SHIPPING";
-	private static final String LOGIN = "LOGIN";
-	private static final String IMMEDIATE_PAYMENT_REQUIRED = "IMMEDIATE_PAYMENT_REQUIRED";
-	private static final String TWO_DECIMAL_FORMAT = "%.2f";
-	private static final String PAY_PAL_REQUEST_ID = "PayPal-Request-Id";
+	
 	
 	@Value("${paypal.create.order.url}")
 	private String createOrderUrl;
@@ -53,25 +48,45 @@ public class PaymentServiceImpl implements PaymentService {
 	private final HttpServiceEngine httpServiceEngine;
 	@Override
 	public OrderResponse createorder(CreateOrderReq createOrderReq) {
-		//get accessToken
+		
+		//step1.get accessToken
 		String accessToken=tokenService.getAccessToken();
 		log.info("creating order in paymentServceImpl");
 		
+		//step2.prepare request
+		HttpRequest httpRequest = prepareCreateOrderHttpRequest(createOrderReq, accessToken);
+        log.info("Prepared HttpRequest for OAuth call:{}",httpRequest);
+		
+		//pass httpRequest into httpEngine
+        ResponseEntity<String> successResponse=httpServiceEngine.makeHttpCall(httpRequest  );	    
+         
+        
+      //STEP3.PROCESS ON THAT API CALL RESPONSE.
+        PayPalOrder payPalOrder=jsonUtil.fromJson(successResponse.getBody(),PayPalOrder.class);
+        //TODO failure/TimeOut-proper response handling
+        
+        OrderResponse orderResponse=toOrderResponse(payPalOrder);
+        log.info("Converted OrderResponse:{}",orderResponse);
+        
+		return orderResponse;
+	}
+
+	private HttpRequest prepareCreateOrderHttpRequest(CreateOrderReq createOrderReq, String accessToken) {
+		//step2.prepare request
 		HttpHeaders headers=new HttpHeaders();
-	
 	    headers.setBearerAuth(accessToken);
 	    headers.setContentType(MediaType.APPLICATION_JSON);
 	     
 	    //set headers paypal-request-id=>UUID
 	    String uuid=UUID.randomUUID().toString();
 	    log.info("generated UUID for PayPal-Request-Id:{}",uuid);
-	    headers.add(PAY_PAL_REQUEST_ID, uuid);
+	    headers.add(Constant.PAY_PAL_REQUEST_ID, uuid);
 	    
 	    Amount amount = new Amount();
         amount.setCurrencyCode(createOrderReq.getCurrencyCode());
         
         //read amount from createOrderReq and convert to 2 decimal places format.
-        String amtStr=String.format(TWO_DECIMAL_FORMAT,createOrderReq.getAmount());
+        String amtStr=String.format(Constant.TWO_DECIMAL_FORMAT,createOrderReq.getAmount());
         amount.setValue(amtStr);
 
 
@@ -79,10 +94,10 @@ public class PaymentServiceImpl implements PaymentService {
         purchaseUnit.setAmount(amount);
         
 	    ExperienceContext context = new ExperienceContext();
-        context.setPaymentMethodPreference(IMMEDIATE_PAYMENT_REQUIRED);
-        context.setLandingPage(LOGIN);
-        context.setShippingPreference(SHIPPING_PREF_NO_SHIPPING);
-        context.setUserAction(USER_ACTION_PAY_NOW);
+        context.setPaymentMethodPreference(Constant.IMMEDIATE_PAYMENT_REQUIRED);
+        context.setLandingPage(Constant.LOGIN);
+        context.setShippingPreference(Constant.SHIPPING_PREF_NO_SHIPPING);
+        context.setUserAction(Constant.USER_ACTION_PAY_NOW);
         context.setReturnUrl(createOrderReq.getReturnUrl());
         context.setCancelUrl(createOrderReq.getCancelUrl());
 
@@ -95,7 +110,7 @@ public class PaymentServiceImpl implements PaymentService {
        
 
         OrderRequest request = new OrderRequest();
-        request.setIntent(INTENT_CAPTURE);
+        request.setIntent(Constant.INTENT_CAPTURE);
         request.setPurchaseUnits(Collections.singletonList(purchaseUnit));
         request.setPaymentSource(paymentSource);
         
@@ -107,27 +122,14 @@ public class PaymentServiceImpl implements PaymentService {
         	    
 	    
 	   
-
+        //STEP3.MAKE API CALL
 		//prepare httpRequest
 		HttpRequest httpRequest=new HttpRequest();
 		httpRequest.setBody(requestAsJson);
 		httpRequest.setHttpHeaders(headers);
 		httpRequest.setHttpMethod(HttpMethod.POST);
-		
 		httpRequest.setUrl(createOrderUrl);
-
-		log.info("Prepared HttpRequest for OAuth call:{}",httpRequest);
-		
-		//pass httpRequest into httpEngine
-        ResponseEntity<String> successResponse=httpServiceEngine.makeHttpCall(httpRequest  );	    
-         
-        PayPalOrder payPalOrder=jsonUtil.fromJson(successResponse.getBody(),PayPalOrder.class);
-        
-        
-        OrderResponse orderResponse=toOrderResponse(payPalOrder);
-        log.info("Converted OrderResponse:{}",orderResponse);
-        
-		return orderResponse;
+		return httpRequest;
 	}
 	
 	public OrderResponse toOrderResponse(PayPalOrder paypalOrder) {
@@ -151,12 +153,4 @@ public class PaymentServiceImpl implements PaymentService {
 	    }
 
 	   
-	
-
-	
-	@PostConstruct 
-	public void init() {
-		log.info("Payment service initialized");
-	}
-
 }
