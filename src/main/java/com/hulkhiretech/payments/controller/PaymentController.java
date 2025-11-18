@@ -1,25 +1,27 @@
 package com.hulkhiretech.payments.controller;
 
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hulkhiretech.payments.pojo.CreateOrderReq;
 import com.hulkhiretech.payments.pojo.OrderResponse;
 import com.hulkhiretech.payments.service.interfaces.PaymentService;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @Slf4j
 @RequiredArgsConstructor
+@RequestMapping("/orders")
 public class PaymentController {
     
 	private final PaymentService paymentServiceImpl;
 	
-	@PostMapping("/payments")
+	@PostMapping("/create")
 	public OrderResponse createOrder(@RequestBody CreateOrderReq createOrderReq) {
 	
 		log.info("Creating order in paypal provider service"+
@@ -29,8 +31,16 @@ public class PaymentController {
 		log.info("Order creation response from service:{}"+response);
 		return response;
 	}
-	@PostConstruct
-	void init() {
-		log.info("PaymentController initialized"+"paymentService:{}",paymentServiceImpl);
+	
+	@PostMapping("/{orderId}/captureOrder")
+	public OrderResponse captureOrder(@PathVariable String orderId) {
+		
+		log.info("Capturing order in paypal provider service with OrderId:"+orderId);
+		
+		OrderResponse response=paymentServiceImpl.captureOrder(orderId);
+		
+		return response;
 	}
+	
+	
 }

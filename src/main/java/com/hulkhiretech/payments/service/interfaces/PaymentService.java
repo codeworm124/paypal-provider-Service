@@ -6,4 +6,6 @@ import com.hulkhiretech.payments.pojo.OrderResponse;
 public interface PaymentService {
 
 	public OrderResponse createorder(CreateOrderReq createOrderReq);
+
+	public OrderResponse captureOrder(String orderId);
 }

@@ -5,6 +5,8 @@ public class Constant {
 	Constant(){
 		
 	}
+	public static final String PAYER_ACTION_REQUIRED = "PAYER_ACTION_REQUIRED";
+
 	public static final String CLIENT_CREDENTIALS = "client_credentials";
 	public static final String GRANT_TYPE = "grant_type";
 	
